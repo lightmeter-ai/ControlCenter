@@ -71,6 +71,7 @@ done
 assert_contains ci/migrate_gitlab_images.sh "registry.gitlab.com/lightmeter/controlcenter"
 assert_contains ci/migrate_gitlab_releases.sh "SOURCE_GITLAB_PROJECT_ID"
 assert_contains ci/migrate_gitlab_releases.sh '--paginate'
+assert_contains tools/go_test.sh '#!/usr/bin/env bash'
 
 assert_contains ci/Dockerfile "https://github.com/lightmeter-ai/ControlCenter"
 # These are literal Dockerfile variables.
