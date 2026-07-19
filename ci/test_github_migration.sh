@@ -12,11 +12,11 @@ assert_file() {
 }
 
 assert_contains() {
-  grep -F "$2" "$1" >/dev/null || fail "$1 does not contain: $2"
+  grep -F -- "$2" "$1" >/dev/null || fail "$1 does not contain: $2"
 }
 
 assert_not_contains() {
-  if grep -F "$2" "$1" >/dev/null; then
+  if grep -F -- "$2" "$1" >/dev/null; then
     fail "$1 still contains: $2"
   fi
 }
@@ -78,6 +78,11 @@ assert_contains ci/Dockerfile 'GIT_COMMIT="$LIGHTMETER_COMMIT"'
 # These are literal Dockerfile variables.
 # shellcheck disable=SC2016
 assert_contains ci/Dockerfile 'GIT_BRANCH="$LIGHTMETER_REF"'
+assert_contains ci/Dockerfile '# syntax=docker/dockerfile:1'
+assert_contains .github/workflows/ci.yml 'docker buildx build'
+assert_contains .github/workflows/ci.yml '--load'
+assert_contains .github/workflows/release.yml 'docker buildx build'
+assert_contains .github/workflows/release.yml '--load'
 assert_contains README.md "github.com/lightmeter-ai/ControlCenter/actions"
 assert_contains RELEASING.md "GitHub"
 assert_contains .github/workflows/migrate-images.yml "packages: write"

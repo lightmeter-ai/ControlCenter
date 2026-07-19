@@ -58,9 +58,12 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
       - name: Build the production image without publishing
         run: |
-          docker build \
+          docker buildx build \
+            --load \
             --file ci/Dockerfile \
             --build-arg LIGHTMETER_VERSION="$(cat VERSION.txt)" \
             --build-arg LIGHTMETER_COMMIT="${GITHUB_SHA}" \
