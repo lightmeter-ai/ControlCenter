@@ -20,6 +20,12 @@ function sha256(contents) {
   return crypto.createHash('sha256').update(contents).digest('hex')
 }
 
+function compareCodeUnits(left, right) {
+  if (left < right) return -1
+  if (left > right) return 1
+  return 0
+}
+
 function stableObject(value) {
   if (Array.isArray(value)) {
     return value.map(stableObject)
@@ -54,7 +60,9 @@ function normalizeVia(via) {
       severity: item.severity,
       range: item.range
     })
-  }).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
+  }).map(item => [JSON.stringify(item), item])
+    .sort((left, right) => compareCodeUnits(left[0], right[0]))
+    .map(([, item]) => item)
 }
 
 function auditSnapshot(report, lockfileContents) {
@@ -75,7 +83,7 @@ function auditSnapshot(report, lockfileContents) {
       isDirect: finding.isDirect === true,
       via: normalizeVia(finding.via)
     }))
-    .sort((left, right) => left.name.localeCompare(right.name))
+    .sort((left, right) => compareCodeUnits(left.name, right.name))
 
   if (findings.length !== counts.high + counts.critical) {
     fail(`metadata reports ${counts.high + counts.critical} high/critical packages but normalized ${findings.length}`)

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "lockfileSha256": "4c9c8433c673812fd97ccaf764c0ad857aacbb7807538f5c255cdfe03b6b2995",
-  "findingsSha256": "5c4d3aa869376e03d539ed8a7d91cca1c8133d62edb01e43dd2806ea3725ac61",
+  "findingsSha256": "486754f041e34787de28b230afb874fcb13889fead8d1d542306faeff891142a",
   "high": 71,
   "critical": 19,
   "highCriticalPackages": 90
