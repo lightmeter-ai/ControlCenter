@@ -66,6 +66,7 @@ assert_file ci/test_npm_audit_baseline.sh
 # let CI disappear precisely when workflow or release files change.
 assert_contains .github/workflows/ci.yml "pull_request:"
 assert_contains .github/workflows/ci.yml "migration-guard"
+assert_contains .github/workflows/ci.yml 'Set up pinned Node.js for migration tests'
 assert_contains .github/workflows/ci.yml "acceptance:"
 assert_not_contains .github/workflows/ci.yml "paths-ignore:"
 assert_not_contains .github/workflows/ci.yml "paths:"
