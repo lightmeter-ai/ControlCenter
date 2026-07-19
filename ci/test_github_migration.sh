@@ -88,6 +88,7 @@ assert_contains .github/workflows/ci.yml 'docker buildx build'
 assert_contains .github/workflows/ci.yml '--load'
 assert_contains .github/workflows/release.yml 'docker buildx build'
 assert_contains .github/workflows/release.yml '--load'
+assert_contains .github/workflows/release.yml "group: release-\${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
 assert_contains README.md "github.com/lightmeter-ai/ControlCenter/actions"
 assert_contains RELEASING.md "GitHub"
 assert_contains .github/workflows/migrate-images.yml "packages: write"
