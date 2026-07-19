@@ -115,7 +115,13 @@ assert_contains .github/workflows/security.yml 'golangci-output-checkstyle.xml'
 assert_contains .github/workflows/security.yml "vars.SONAR_HOST_URL || 'https://sonarcloud.io'"
 assert_not_contains .github/workflows/security.yml 'golang/govulncheck-action@'
 assert_contains .github/workflows/security.yml 'golang.org/x/vuln/cmd/govulncheck@v1.0.4'
+assert_contains .github/workflows/security.yml 'set -o pipefail'
+# This is a literal Bash PIPESTATUS reference in the workflow.
+# shellcheck disable=SC2016
+assert_contains .github/workflows/security.yml 'govuln_status=${PIPESTATUS[0]}'
 assert_contains .github/workflows/security.yml 'npm-audit.json'
+assert_contains .github/workflows/security.yml 'report.metadata.vulnerabilities'
+assert_contains .github/workflows/security.yml 'npm audit did not produce a valid vulnerability report'
 assert_contains .github/workflows/ci.yml 'npm run lint -- src'
 assert_contains .reuse/dep5 'Files: .github/workflows/*'
 assert_contains README.md "github.com/lightmeter-ai/ControlCenter/actions"
