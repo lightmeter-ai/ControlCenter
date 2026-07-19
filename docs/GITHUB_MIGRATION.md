@@ -23,6 +23,15 @@ The release and nightly workflows need these GitHub Actions secrets:
 - `DOCKERHUB_USERNAME`
 - `DOCKERHUB_TOKEN`
 
+The security workflow uses the `SONAR_TOKEN` Actions secret and the
+`SONAR_HOST_URL` repository variable. The token copied from GitLab during the
+2026-07-19 migration was already expired at the source. The workflow validates
+the credential before doing the expensive Sonar work: a missing or expired
+legacy credential produces an explicit warning and skips SonarCloud, while a
+transport or API failure still fails the job. Replace `SONAR_TOKEN` with a new
+SonarQube Cloud token to restore the scan; once enabled, scanner failures are
+blocking.
+
 `GITHUB_TOKEN` supplies GitHub Release and GHCR authorization. Repository
 workflow-token defaults must stay read-only; only publishing jobs receive
 `contents: write` or `packages: write`.
@@ -93,6 +102,9 @@ Before deleting the old account, record evidence for every item below:
 - GitHub `master`, `develop`, and all retained release tags match their intended
   GitLab source SHAs.
 - Required GitHub checks pass on the latest reviewed commit.
+- A renewed `SONAR_TOKEN` passes the workflow credential preflight and the
+  SonarCloud scan, or SonarCloud retirement is explicitly approved and its
+  workflow/configuration is removed.
 - A clean Docker build succeeds without pulling from `registry.gitlab.com`.
 - A manual dry-run proves the release workflow's validation and asset layout.
 - GitHub Releases contain every recoverable historical binary and checksum.
