@@ -21,6 +21,17 @@ assert_not_contains() {
   fi
 }
 
+assert_exact_line() {
+  grep -F -x -- "$2" "$1" >/dev/null || fail "$1 does not contain exact line: $2"
+}
+
+assert_before() {
+  first_line=$(grep -n -F -m 1 -- "$2" "$1" | cut -d: -f1)
+  second_line=$(grep -n -F -m 1 -- "$3" "$1" | cut -d: -f1)
+  [ -n "$first_line" ] && [ -n "$second_line" ] && [ "$first_line" -lt "$second_line" ] \
+    || fail "$1 must place '$2' before '$3'"
+}
+
 assert_step_blocking() {
   step_header="      - name: $2"
   if ! step_block=$(awk -v header="$step_header" '
@@ -47,11 +58,15 @@ assert_file .github/workflows/release.yml
 assert_file .github/workflows/nightly.yml
 assert_file .github/workflows/migrate-images.yml
 assert_file docs/GITHUB_MIGRATION.md
+assert_file ci/check_npm_audit_baseline.js
+assert_file ci/npm-audit-baseline.json
+assert_file ci/test_npm_audit_baseline.sh
 
 # Every pull request must exercise the migration guard; path-filtered triggers
 # let CI disappear precisely when workflow or release files change.
 assert_contains .github/workflows/ci.yml "pull_request:"
 assert_contains .github/workflows/ci.yml "migration-guard"
+assert_contains .github/workflows/ci.yml 'Set up pinned Node.js for migration tests'
 assert_contains .github/workflows/ci.yml "acceptance:"
 assert_not_contains .github/workflows/ci.yml "paths-ignore:"
 assert_not_contains .github/workflows/ci.yml "paths:"
@@ -160,12 +175,30 @@ assert_contains .github/workflows/security.yml '3)'
 assert_contains .github/workflows/security.yml 'govulncheck failed with status ${govuln_status}'
 assert_step_blocking .github/workflows/security.yml 'Run govulncheck'
 assert_contains .github/workflows/security.yml 'npm-audit.json'
-assert_contains .github/workflows/security.yml 'report.metadata.vulnerabilities'
-assert_contains .github/workflows/security.yml 'npm audit did not produce a valid vulnerability report'
+assert_contains .github/workflows/security.yml 'node ../../ci/check_npm_audit_baseline.js check'
+assert_contains .github/workflows/security.yml 'npm-audit.json package-lock.json ../../ci/npm-audit-baseline.json'
+assert_contains ci/check_npm_audit_baseline.js 'report.metadata.vulnerabilities'
+assert_contains ci/check_npm_audit_baseline.js 'audit report does not contain integer vulnerability counts'
+assert_contains ci/check_npm_audit_baseline.js 'lockfileSha256'
+assert_contains ci/check_npm_audit_baseline.js 'findingsSha256'
+assert_contains ci/check_npm_audit_baseline.js 'compareCodeUnits'
+assert_not_contains ci/check_npm_audit_baseline.js 'localeCompare'
+# This is a literal shell variable in the workflow.
+# shellcheck disable=SC2016
+assert_contains .github/workflows/security.yml 'case "$audit_status" in'
+# shellcheck disable=SC2016
+assert_contains .github/workflows/security.yml 'npm audit failed with unexpected status ${audit_status}'
+# shellcheck disable=SC2016
+assert_before .github/workflows/security.yml \
+  'npm audit failed with unexpected status ${audit_status}' \
+  'node ../../ci/check_npm_audit_baseline.js check'
+assert_step_blocking .github/workflows/security.yml 'Audit frontend dependencies'
 assert_contains .github/workflows/ci.yml 'npm run lint -- src'
 assert_step_blocking .github/workflows/ci.yml 'Lint frontend'
 assert_step_blocking .github/workflows/ci.yml 'Verify generated CLI documentation'
 assert_contains .github/workflows/ci.yml 'node-version: 18.20.8'
+assert_exact_line .github/workflows/ci.yml '  NODE_VERSION: 16.20.2'
+assert_exact_line .github/workflows/security.yml '          node-version: 16.20.2'
 assert_contains .github/workflows/security.yml 'id: sonar-auth'
 assert_contains .github/workflows/security.yml "steps.sonar-auth.outputs.enabled == 'true'"
 assert_contains .github/workflows/security.yml 'type == "object" and has("valid") and (.valid | type == "boolean")'
@@ -200,5 +233,6 @@ assert_contains .github/workflows/release.yml "release/**"
 assert_contains ci/release_on_github.sh "release/"
 
 sh ci/test_publish_docker_image.sh
+sh ci/test_npm_audit_baseline.sh
 
 printf '%s\n' 'PASS: GitHub migration contract is satisfied'

@@ -32,6 +32,16 @@ transport or API failure still fails the job. Replace `SONAR_TOKEN` with a new
 SonarQube Cloud token to restore the scan; once enabled, scanner failures are
 blocking.
 
+The frontend dependency audit is also blocking, with an explicit migration
+baseline in `ci/npm-audit-baseline.json` for the legacy dependency findings that
+existed at cutover. `ci/check_npm_audit_baseline.js` binds that acknowledgement
+to both the exact package-lock SHA-256 and a normalized fingerprint of every
+high or critical finding. A lockfile change, a newly disclosed finding, a
+severity change, malformed audit output, or an audit transport/tooling failure
+therefore fails the workflow. Reductions also require a reviewed baseline
+refresh so the acknowledgement can only shrink intentionally; the full audit
+report is retained as a workflow artifact.
+
 `GITHUB_TOKEN` supplies GitHub Release and GHCR authorization. Repository
 workflow-token defaults must stay read-only; only publishing jobs receive
 `contents: write` or `packages: write`.

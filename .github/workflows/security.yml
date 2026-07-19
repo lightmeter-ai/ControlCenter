@@ -107,7 +107,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 16
+          node-version: 16.20.2
           cache: npm
           cache-dependency-path: frontend/controlcenter/package-lock.json
       - name: Audit frontend dependencies
@@ -115,30 +115,20 @@ jobs:
         run: |
           audit_status=0
           npm audit --audit-level=high --json > npm-audit.json || audit_status=$?
-          if ! audit_counts="$(node -e '
-            const fs = require("fs");
-            const report = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-            const counts = report && report.metadata && report.metadata.vulnerabilities;
-            if (!counts || !Number.isInteger(counts.total) ||
-                !Number.isInteger(counts.high) || !Number.isInteger(counts.critical)) {
-              process.exit(1);
-            }
-            process.stdout.write(String(counts.total) + " " + String(counts.high + counts.critical));
-          ' npm-audit.json)"; then
-            echo "::error::npm audit did not produce a valid vulnerability report"
-            exit 2
+          case "$audit_status" in
+            0|1) ;;
+            *)
+              echo "::error::npm audit failed with unexpected status ${audit_status}; see npm-audit-report"
+              exit "$audit_status"
+              ;;
+          esac
+          node ../../ci/check_npm_audit_baseline.js check \
+            npm-audit.json package-lock.json ../../ci/npm-audit-baseline.json
+          if [ "$audit_status" -eq 1 ]; then
+            echo "::warning::npm audit matched the reviewed legacy baseline; see npm-audit-report"
           fi
-          read -r vulnerability_total high_or_critical <<EOF
-          $audit_counts
-          EOF
-          if [ "$audit_status" -ne 0 ] && [ "$high_or_critical" -eq 0 ]; then
-            echo "::error::npm audit failed with status ${audit_status} without reporting high or critical vulnerabilities"
-            exit "$audit_status"
-          elif [ "$audit_status" -ne 0 ]; then
-            echo "::warning::npm audit reported ${high_or_critical} high or critical legacy dependency findings; see npm-audit-report"
-          fi
-          printf 'npm audit status=%s vulnerabilities=%s report_bytes=%s\n' \
-            "$audit_status" "$vulnerability_total" "$(wc -c < npm-audit.json)"
+          printf 'npm audit status=%s report_bytes=%s\n' \
+            "$audit_status" "$(wc -c < npm-audit.json)"
       - name: Upload npm audit evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
