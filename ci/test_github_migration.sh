@@ -175,6 +175,11 @@ assert_contains ci/check_npm_audit_baseline.js 'lockfileSha256'
 assert_contains ci/check_npm_audit_baseline.js 'findingsSha256'
 assert_contains ci/check_npm_audit_baseline.js 'compareCodeUnits'
 assert_not_contains ci/check_npm_audit_baseline.js 'localeCompare'
+# This is a literal shell variable in the workflow.
+# shellcheck disable=SC2016
+assert_contains .github/workflows/security.yml 'case "$audit_status" in'
+# shellcheck disable=SC2016
+assert_contains .github/workflows/security.yml 'npm audit failed with unexpected status ${audit_status}'
 assert_step_blocking .github/workflows/security.yml 'Audit frontend dependencies'
 assert_contains .github/workflows/ci.yml 'npm run lint -- src'
 assert_step_blocking .github/workflows/ci.yml 'Lint frontend'
