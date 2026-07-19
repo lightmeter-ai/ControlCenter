@@ -55,7 +55,7 @@ LABEL org.opencontainers.image.documentation="https://github.com/lightmeter-ai/C
 LABEL org.opencontainers.image.vendor="Lightmeter Project"
 LABEL org.opencontainers.image.version="${LIGHTMETER_VERSION}"
 LABEL org.opencontainers.image.revision="${LIGHTMETER_COMMIT}"
-LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-only"
 
 COPY --from=builder /src/lightmeter /lightmeter
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt

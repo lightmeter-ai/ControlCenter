@@ -128,7 +128,7 @@ $(FRONTEND_NODE_MODULES): frontend/controlcenter/package.json frontend/controlce
 
 npminstall: $(FRONTEND_NODE_MODULES)
 
-serve_frontend_dev: npminstall
+serve_frontend_dev: npminstall $(TRANSLATION_OUTPUT)
 	cd frontend/controlcenter && npm run serve
 
 www:

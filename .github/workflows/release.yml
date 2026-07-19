@@ -10,6 +10,11 @@ on:
         description: Existing release/<VERSION> tag to publish
         required: true
         type: string
+      update_latest:
+        description: Also update the mutable latest tags
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -28,6 +33,7 @@ jobs:
       packages: write
     env:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      PUSH_LATEST: ${{ github.event_name == 'push' || inputs.update_latest }}
     steps:
       - name: Check out release tag
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
