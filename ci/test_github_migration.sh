@@ -47,6 +47,9 @@ assert_file .github/workflows/release.yml
 assert_file .github/workflows/nightly.yml
 assert_file .github/workflows/migrate-images.yml
 assert_file docs/GITHUB_MIGRATION.md
+assert_file ci/check_npm_audit_baseline.js
+assert_file ci/npm-audit-baseline.json
+assert_file ci/test_npm_audit_baseline.sh
 
 # Every pull request must exercise the migration guard; path-filtered triggers
 # let CI disappear precisely when workflow or release files change.
@@ -160,8 +163,13 @@ assert_contains .github/workflows/security.yml '3)'
 assert_contains .github/workflows/security.yml 'govulncheck failed with status ${govuln_status}'
 assert_step_blocking .github/workflows/security.yml 'Run govulncheck'
 assert_contains .github/workflows/security.yml 'npm-audit.json'
-assert_contains .github/workflows/security.yml 'report.metadata.vulnerabilities'
-assert_contains .github/workflows/security.yml 'npm audit did not produce a valid vulnerability report'
+assert_contains .github/workflows/security.yml 'node ../../ci/check_npm_audit_baseline.js check'
+assert_contains .github/workflows/security.yml 'npm-audit.json package-lock.json ../../ci/npm-audit-baseline.json'
+assert_contains ci/check_npm_audit_baseline.js 'report.metadata.vulnerabilities'
+assert_contains ci/check_npm_audit_baseline.js 'audit report does not contain integer vulnerability counts'
+assert_contains ci/check_npm_audit_baseline.js 'lockfileSha256'
+assert_contains ci/check_npm_audit_baseline.js 'findingsSha256'
+assert_step_blocking .github/workflows/security.yml 'Audit frontend dependencies'
 assert_contains .github/workflows/ci.yml 'npm run lint -- src'
 assert_step_blocking .github/workflows/ci.yml 'Lint frontend'
 assert_step_blocking .github/workflows/ci.yml 'Verify generated CLI documentation'
@@ -200,5 +208,6 @@ assert_contains .github/workflows/release.yml "release/**"
 assert_contains ci/release_on_github.sh "release/"
 
 sh ci/test_publish_docker_image.sh
+sh ci/test_npm_audit_baseline.sh
 
 printf '%s\n' 'PASS: GitHub migration contract is satisfied'
