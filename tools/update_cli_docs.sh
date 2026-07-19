@@ -12,4 +12,4 @@ APP_VERSION=$(cat VERSION.txt)
   echo '```'
   ./lightmeter 2>&1
   echo '```'
-) > cli_usage.md
+) | expand -t 8 > cli_usage.md

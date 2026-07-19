@@ -21,6 +21,13 @@ assert_not_contains() {
   fi
 }
 
+assert_step_blocking() {
+  step_block=$(sed -n "/- name: $2/,+3p" "$1")
+  if printf '%s\n' "$step_block" | grep -F 'continue-on-error: true' >/dev/null; then
+    fail "$1 leaves the $2 step non-blocking"
+  fi
+}
+
 assert_file .github/workflows/ci.yml
 assert_file .github/workflows/security.yml
 assert_file .github/workflows/release.yml
@@ -80,6 +87,7 @@ assert_contains ci/migrate_gitlab_releases.sh '--paginate'
 # shellcheck disable=SC2016
 assert_contains ci/migrate_gitlab_releases.sh 'done < "$sorted_releases"'
 assert_contains tools/go_test.sh '#!/usr/bin/env bash'
+assert_contains tools/update_cli_docs.sh '| expand -t 8 > cli_usage.md'
 assert_contains Makefile 'BUILD_DEPENDENCIES = go gcc ragel npm bash'
 # This is a literal Make variable reference.
 # shellcheck disable=SC2016
@@ -123,6 +131,15 @@ assert_contains .github/workflows/security.yml 'npm-audit.json'
 assert_contains .github/workflows/security.yml 'report.metadata.vulnerabilities'
 assert_contains .github/workflows/security.yml 'npm audit did not produce a valid vulnerability report'
 assert_contains .github/workflows/ci.yml 'npm run lint -- src'
+assert_step_blocking .github/workflows/ci.yml 'Lint frontend'
+assert_step_blocking .github/workflows/ci.yml 'Verify generated CLI documentation'
+assert_contains .github/workflows/ci.yml 'node-version: 18.20.8'
+assert_contains .github/workflows/security.yml 'id: sonar-auth'
+assert_contains .github/workflows/security.yml "steps.sonar-auth.outputs.enabled == 'true'"
+if sed -n '/^  sonarcloud:/,/^  license-compliance:/p' .github/workflows/security.yml \
+  | grep -F 'continue-on-error: true' >/dev/null; then
+  fail '.github/workflows/security.yml leaves the SonarCloud job non-blocking'
+fi
 assert_contains .reuse/dep5 'Files: .github/workflows/*'
 assert_contains README.md "github.com/lightmeter-ai/ControlCenter/actions"
 assert_contains RELEASING.md "GitHub"

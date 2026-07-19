@@ -103,7 +103,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          # gauge-js 5 requires Node.js 18 or newer. Keep the application
+          # frontend on its historical Node.js version in the other jobs.
+          node-version: 18.20.8
           cache: npm
           cache-dependency-path: acceptance_tests/package-lock.json
       - name: Install browser-test dependencies
@@ -171,11 +173,9 @@ jobs:
         working-directory: frontend/controlcenter
         run: npm ci --no-audit --no-fund
       - name: Lint frontend
-        continue-on-error: true
         working-directory: frontend/controlcenter
         run: npm run lint -- src
       - name: Verify generated CLI documentation
-        continue-on-error: true
         run: |
           make update_cli_docs
           git diff --exit-code
