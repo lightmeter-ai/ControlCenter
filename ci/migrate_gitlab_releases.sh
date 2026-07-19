@@ -46,7 +46,9 @@ fi
 printf 'source release pagination exhausted: %s pages, %s releases\n' \
   "$page_count" "$release_count"
 
-jq -c 'sort_by(.released_at)[]' "$releases_json" |
+sorted_releases="$migration_tmp/releases.sorted.jsonl"
+jq -c 'sort_by(.released_at)[]' "$releases_json" > "$sorted_releases"
+
 while IFS= read -r release_json; do
   release_tag=$(printf '%s' "$release_json" | jq -r '.tag_name')
   release_name=$(printf '%s' "$release_json" | jq -r '.name // .tag_name')
@@ -90,7 +92,9 @@ while IFS= read -r release_json; do
       --prerelease=false
   fi
 
-  printf '%s' "$release_json" | jq -r '.assets.links[]?.url' |
+  asset_urls="$migration_tmp/asset-urls"
+  printf '%s' "$release_json" | jq -r '.assets.links[]?.url' > "$asset_urls"
+
   while IFS= read -r asset_url; do
     case "$asset_url" in
       "https://gitlab.com/api/v4/projects/$source_project_id/packages/generic/lightmeter/"*) ;;
@@ -107,7 +111,7 @@ while IFS= read -r release_json; do
       printf 'SKIP\t%s\tunavailable asset: %s\n' "$release_tag" "$asset_url" >&2
       continue
     fi
-  done
+  done < "$asset_urls"
 
   if [ -f "$release_dir/sha256.txt" ]; then
     (cd "$release_dir" && sha256sum --check sha256.txt)
@@ -122,7 +126,7 @@ while IFS= read -r release_json; do
   done
 
   printf 'MIGRATED\t%s\t%s assets declared\n' "$release_tag" "$asset_count"
-done
+done < "$sorted_releases"
 
 if [ "$apply_migration" = true ]; then
   latest_release_tag=$(jq -r 'max_by(.released_at).tag_name' "$releases_json")
