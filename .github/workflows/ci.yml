@@ -1,0 +1,177 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: 1.21.10
+  NODE_VERSION: 16
+
+jobs:
+  migration-guard:
+    name: GitHub migration guards
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Verify single-writer migration contract
+        run: sh ci/test_github_migration.sh
+
+  test:
+    name: Go tests
+    needs: migration-guard
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Install generation dependencies
+        run: sudo apt-get update && sudo apt-get install --yes ragel
+      - name: Generate mocks and parser
+        run: make mocks
+      - name: Run race-enabled unit tests
+        run: go test ./... -race -count=1
+
+  build:
+    name: Release image build
+    needs: migration-guard
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Build the production image without publishing
+        run: |
+          docker build \
+            --file ci/Dockerfile \
+            --build-arg LIGHTMETER_VERSION="$(cat VERSION.txt)" \
+            --build-arg LIGHTMETER_COMMIT="${GITHUB_SHA}" \
+            --build-arg LIGHTMETER_REF="${GITHUB_REF_NAME}" \
+            --build-arg IMAGE_TAG="ci-${GITHUB_SHA}" \
+            --tag controlcenter-ci:"${GITHUB_SHA}" \
+            .
+      - name: Smoke-test the image entrypoint
+        run: docker run --rm controlcenter-ci:"${GITHUB_SHA}" -version
+      - name: Extract acceptance-test binary
+        run: |
+          image_container="$(docker create controlcenter-ci:"${GITHUB_SHA}")"
+          docker cp "${image_container}:/lightmeter" ./lightmeter
+          docker rm "${image_container}"
+      - name: Upload acceptance-test binary
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: acceptance-test-binary
+          path: lightmeter
+          if-no-files-found: error
+
+  acceptance:
+    name: Legacy browser acceptance tests
+    needs:
+      - migration-guard
+      - build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Download tested binary
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: acceptance-test-binary
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: acceptance_tests/package-lock.json
+      - name: Install browser-test dependencies
+        working-directory: acceptance_tests
+        run: npm ci --no-audit --no-fund
+      - name: Run Gauge and Taiko tests
+        env:
+          LIGHTMETER_BINARY: ${{ github.workspace }}/lightmeter
+        run: |
+          chmod +x lightmeter
+          xvfb-run --auto-servernum npm --prefix acceptance_tests test
+
+  coverage:
+    name: Coverage
+    needs: migration-guard
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Install generation dependencies
+        run: sudo apt-get update && sudo apt-get install --yes ragel
+      - name: Generate mocks and parser
+        run: make mocks
+      - name: Generate coverage profile
+        run: go test ./... -covermode=atomic -coverprofile=coverage.out
+      - name: Write coverage summary
+        run: go tool cover -func=coverage.out | tee coverage.txt
+      - name: Upload coverage evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: go-coverage
+          path: |
+            coverage.out
+            coverage.txt
+          if-no-files-found: error
+
+  compatibility-checks:
+    name: Legacy compatibility checks
+    needs: migration-guard
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    continue-on-error: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/controlcenter/package-lock.json
+      - name: Install generation dependencies
+        run: sudo apt-get update && sudo apt-get install --yes ragel
+      - name: Install frontend dependencies
+        working-directory: frontend/controlcenter
+        run: npm ci --no-audit --no-fund
+      - name: Lint frontend
+        working-directory: frontend/controlcenter
+        run: npm run lint
+      - name: Verify generated CLI documentation
+        run: |
+          make update_cli_docs
+          git diff --exit-code

@@ -9,12 +9,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 ---
 
-[![pipeline status](https://gitlab.com/lightmeter/controlcenter/badges/master/pipeline.svg)](https://gitlab.com/lightmeter/controlcenter/-/commits/master)
+[![CI](https://github.com/lightmeter-ai/ControlCenter/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/lightmeter-ai/ControlCenter/actions/workflows/ci.yml)
 [![Translation status](https://translate.lightmeter.io/widgets/controlcenter/-/svg-badge.svg)](https://translate.lightmeter.io/engage/controlcenter/)
 <br/>
 [![report_card](https://goreportcard.com/badge/gitlab.com/lightmeter/controlcenter)](https://goreportcard.com/report/gitlab.com/lightmeter/controlcenter)
 [![sqale_rating](https://sonarcloud.io/api/project_badges/measure?project=lightmeter_controlcenter&metric=sqale_rating)](https://sonarcloud.io/dashboard?id=lightmeter_controlcenter)
-[![coverage report](https://gitlab.com/lightmeter/controlcenter/badges/master/coverage.svg)](https://gitlab.com/lightmeter/controlcenter/-/commits/master)
+[![Security](https://github.com/lightmeter-ai/ControlCenter/actions/workflows/security.yml/badge.svg?branch=master)](https://github.com/lightmeter-ai/ControlCenter/actions/workflows/security.yml)
 [![ncloc](https://sonarcloud.io/api/project_badges/measure?project=lightmeter_controlcenter&metric=ncloc)](https://sonarcloud.io/dashboard?id=lightmeter_controlcenter)
 <br/>
 [![bugs](https://sonarcloud.io/api/project_badges/measure?project=lightmeter_controlcenter&metric=bugs)](https://sonarcloud.io/dashboard?id=lightmeter_controlcenter)
@@ -64,7 +64,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 Welcome to Lightmeter Control Center, the Open Source mailops monitoring application.
 
-<img src="https://gitlab.com/lightmeter/controlcenter/-/raw/master/docs/assets/screenshot.png"  width="600"/>
+<img src="https://raw.githubusercontent.com/lightmeter-ai/ControlCenter/master/docs/assets/screenshot.png" width="600"/>
 
 ## Supported Mail Transfer Agents
 
@@ -74,8 +74,8 @@ Currently Postfix MTA is supported. Future support for additional MTAs is planne
 
 1. Install Lightmeter Control Center as you prefer:
    1. [Download Docker Image](https://hub.docker.com/r/lightmeter/controlcenter)
-   2. [Download source code from Gitlab](https://gitlab.com/lightmeter/controlcenter/-/releases)
-   3. [Download from Gitlab package registry](https://gitlab.com/lightmeter/controlcenter/-/packages)
+   2. [Download source code or a Linux binary from GitHub](https://github.com/lightmeter-ai/ControlCenter/releases)
+   3. [Browse the source repository on GitHub](https://github.com/lightmeter-ai/ControlCenter)
 2. When using the binaries you can run Lightmeter using `./lightmeter -workspace ~/lightmeter_workspace -watch_dir /var/log`
    This command will start the application monitoring `/var/log` in real time (including old logs found there), and store operation files in `lightmeter_workspace` folder in your user's home directory.
 3. If you are using the docker image, please look at the [Usage](#usage), Docker image section in the README.md
@@ -87,11 +87,11 @@ Currently Postfix MTA is supported. Future support for additional MTAs is planne
 
 ### Install using Docker
 
-Docker images are generated for each release and are published in the Lightmeter [registry on Gitlab](https://gitlab.com/lightmeter/controlcenter/container_registry) and in the [Docker Hub](https://hub.docker.com/r/lightmeter/controlcenter).
+Docker images are generated for each release and published to [Docker Hub](https://hub.docker.com/r/lightmeter/controlcenter) and the [GitHub Container Registry](https://github.com/lightmeter-ai/ControlCenter/pkgs/container/controlcenter).
 
 You can use the `latest` tag if desired. For usage see [Docker image](#docker-image).
 
-Additionally we publish every night (in UTC time) two docker images with the tags `nightly-master` and `nightly-develop`. `nightly-develop` consists on a build from the `develop` branch, containing the latest changes, very unstable and suitable for use in production. `nightly-master` is more stable, containing changes that will be included in the next release, but isn't recommended to be used in production either.
+The historical `nightly-master` and `nightly-develop` image tags are retained. Their automatic schedules are disabled; maintainers can publish them manually through GitHub Actions. Neither nightly tag is recommended for production.
 
 ### Build from source code
 
@@ -148,7 +148,7 @@ where this procedure will become easier, safer and more flexible.
 
 ### Install from binaries
 
-We provide pre-build architecture dependent binaries on [Gitlab](https://gitlab.com/lightmeter/controlcenter/-/releases) that
+We provide pre-built architecture-dependent binaries on [GitHub](https://github.com/lightmeter-ai/ControlCenter/releases) that
 should run on any modern Linux distribution. Just download them, set them as executable and executed as described in [Usage](##Usage).
 
 Your operating system should provide certificate authority certificates (ca-certificates package in many distributions) by default,
@@ -178,7 +178,7 @@ The simplest way to use the latest version with docker is with the command:
 
 ```
 $ docker run -p 8080:8080 -v "<path_to_workspace>:/workspace:rw" -v "/var/log/:/logs:ro" \
-  registry.gitlab.com/lightmeter/controlcenter -workspace /workspace -watch_dir /logs
+  docker.io/lightmeter/controlcenter -workspace /workspace -watch_dir /logs
 
 ```
 
@@ -186,7 +186,7 @@ Where `<path_to_workspace>` is a directory where Control Center will keep data t
 
 Then open your browser on http://localhost:8080 to access the web based user interface.
 
-You can find all released images in the [registry page](https://gitlab.com/lightmeter/controlcenter/container_registry).
+You can find released images on [Docker Hub](https://hub.docker.com/r/lightmeter/controlcenter/tags) and [GitHub Container Registry](https://github.com/lightmeter-ai/ControlCenter/pkgs/container/controlcenter).
 
 ### NixOS Package and Module
 
@@ -298,7 +298,7 @@ It's important to notice that, in case a directory contains archived files with 
 only the ones using the latter naming convention (the ones suffixed with a date) will be used by Control Center.
 All other archived files will be ignored.
 
-Please create an issue on [Gitlab](https://gitlab.com/lightmeter/controlcenter/-/issues/) if you use a different log naming convention.
+Please create an issue on [GitHub](https://github.com/lightmeter-ai/ControlCenter/issues) if you use a different log naming convention.
 
 ## Syslog compatibility
 
@@ -309,7 +309,7 @@ If you are using `-watch_dir` or the `LIGHTMETER_WATCH_DIR` environment variable
 | `RSYSLOG_TraditionalFileFormat`  | `-log_format default` or not pass this option at all | `LIGHTMETER_LOG_FORMAT=default` or not defined at all |
 | `RSYSLOG_SyslogProtocol23Format` | `-log_format rfc3339`                                | `LIGHTMETER_LOG_FORMAT=rfc3339`                       |
 
-If you use a different format, please let us know via a Gitlab issue.
+If you use a different format, please let us know via a [GitHub issue](https://github.com/lightmeter-ai/ControlCenter/issues).
 
 ### Importing logs
 
@@ -600,7 +600,7 @@ Any changes made to frontend files will be detected automatically, necessary fil
 
 ### Browser automation tests
 
-These tests (also referred to as User Acceptance Tests) are found in the `acceptance_tests` directory and executed by [Gauge](https://gauge.org/) and [Taiko](https://github.com/getgauge/taiko). These tests are part of CI/CD and executed on every GitLab commit.
+These tests (also referred to as User Acceptance Tests) are found in the `acceptance_tests` directory and executed by [Gauge](https://gauge.org/) and [Taiko](https://github.com/getgauge/taiko). GitHub CI executes them as a non-blocking legacy compatibility check, matching their former allow-failure status.
 
 Please refer to the specific documentation on how run them manually in the file [acceptance_tests/README.md](acceptance_tests/README.md).
 

@@ -24,7 +24,7 @@ all:
 race:
 	./tools/go_test.sh -race
 
-BUILD_DEPENDENCIES = go gcc ragel npm vue
+BUILD_DEPENDENCIES = go gcc ragel npm
 $(foreach exec,$(BUILD_DEPENDENCIES),\
     $(if $(shell command -v $(exec) 2> /dev/null),$(info Found executable `$(exec)`),$(error "Build dependency program $(exec) could not be found in PATH. Check README.md for more info")))
 
@@ -123,10 +123,10 @@ clean_postfix_parser:
 TRANSLATION_OUTPUT = ./frontend/controlcenter/src/translation/translations.json
 
 npminstall: $(TRANSLATION_OUTPUT)
-	cd frontend/controlcenter && npm ci install
+	cd frontend/controlcenter && npm ci --no-audit --no-fund
 
 serve_frontend_dev: npminstall
-	cd frontend/controlcenter && vue serve ./src/main.js
+	cd frontend/controlcenter && npm run serve
 
 www:
 	mkdir -p ./www
@@ -178,10 +178,10 @@ $(UI_TEMPLATE_POT): frontend/controlcenter/node_modules/.bin/gettext-extract $(G
 	gettext-extract --quiet --attribute v-translate --output $@ $(GETTEXT_SOURCES)
 
 frontend/controlcenter/node_modules/.bin/gettext-compile:
-	cd frontend/controlcenter && npm ci install
+	cd frontend/controlcenter && npm ci --no-audit --no-fund
 
 frontend/controlcenter/node_modules/.bin/gettext-extract:
-	cd frontend/controlcenter && npm ci install
+	cd frontend/controlcenter && npm ci --no-audit --no-fund
 
 # Convert po files to vue.js format
 vuejs-translations: $(TRANSLATION_OUTPUT) frontend/controlcenter/node_modules/.bin/gettext-compile
