@@ -21,6 +21,13 @@ case "${1:-}" in
           echo 'DENIED: simulated authentication failure' >&2
           exit 8
         fi
+        github_list_count=$(grep -F -x "ls $github_image" "$FAKE_CRANE_LOG" \
+          | awk 'END { print NR }')
+        if [ "${FAKE_CRANE_GITHUB_APPEARS_AFTER_LIST:-false}" = true ] \
+          && [ "$github_list_count" -eq 1 ]; then
+          echo 'NAME_UNKNOWN: repository name not known to registry' >&2
+          exit 1
+        fi
         if [ "${FAKE_CRANE_GITHUB_ABSENT:-false}" = true ] \
           && ! grep -F -x "$github_image:stable" "$FAKE_CRANE_STATE" >/dev/null 2>&1; then
           echo 'NAME_UNKNOWN: repository name not known to registry' >&2
@@ -43,6 +50,10 @@ case "${1:-}" in
         if [ "${FAKE_CRANE_FAIL_GITHUB_DIGEST:-false}" = true ]; then
           echo 'simulated registry transport failure' >&2
           exit 7
+        fi
+        if [ "${FAKE_CRANE_GITHUB_DIVERGED:-false}" = true ]; then
+          printf '%s\n' sha256:diverged
+          exit
         fi
         printf '%s\n' sha256:stable
         ;;

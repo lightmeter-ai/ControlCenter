@@ -58,7 +58,25 @@ if grep -F 'copy ' "$FAKE_CRANE_LOG" >/dev/null; then
 fi
 grep -F 'failed to inventory target image before migration' \
   "$task_tmp/denied.err" >/dev/null
-grep -F 'registry error for ghcr.io/lightmeter-ai/controlcenter: DENIED: requested access to the resource is denied' \
+grep -F 'registry error for ghcr.io/lightmeter-ai/controlcenter: DENIED: simulated authentication failure' \
   "$task_tmp/denied.err" >/dev/null
+
+: > "$FAKE_CRANE_LOG"
+: > "$FAKE_CRANE_STATE"
+export FAKE_CRANE_GITHUB_LIST_DENIED=false
+export FAKE_CRANE_GITHUB_APPEARS_AFTER_LIST=true
+export FAKE_CRANE_GITHUB_DIVERGED=true
+
+race_status=0
+APPLY_IMAGE_MIGRATION=true sh ci/migrate_gitlab_images.sh \
+  > "$task_tmp/race.out" 2> "$task_tmp/race.err" \
+  || race_status=$?
+
+test "$race_status" -ne 0
+if grep -F 'copy ' "$FAKE_CRANE_LOG" >/dev/null; then
+  echo 'image migration overwrote a tag created after initial inventory' >&2
+  exit 1
+fi
+grep -F 'DIVERGED' "$task_tmp/race.err" >/dev/null
 
 printf '%s\n' 'PASS: image migration copies only confirmed-missing tags and never overwrites on errors'

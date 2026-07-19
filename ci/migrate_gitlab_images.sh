@@ -81,12 +81,13 @@ list_target_tags "$dockerhub_image" "$dockerhub_tags" "$dockerhub_list_error"
 sync_tag() {
   target_image=$1
   target_tags=$2
-  image_tag=$3
+  list_error=$3
+  image_tag=$4
   source_ref="$source_image:$image_tag"
   target_ref="$target_image:$image_tag"
   source_digest=$(crane digest "$source_ref")
 
-  if tag_exists "$target_tags" "$image_tag"; then
+  verify_existing_tag() {
     if ! target_digest=$(crane digest "$target_ref"); then
       printf 'refusing to overwrite an inventoried tag after digest lookup failed: %s\n' \
         "$target_ref" >&2
@@ -101,10 +102,24 @@ sync_tag() {
 
     printf 'MATCH\t%s\t%s\n' "$target_ref" "$source_digest"
     return
+  }
+
+  if tag_exists "$target_tags" "$image_tag"; then
+    verify_existing_tag
+    return
   fi
 
   if [ "$apply_migration" = false ]; then
     printf 'MISSING\t%s\t%s\n' "$target_ref" "$source_digest"
+    return
+  fi
+
+  # Close the inventory/copy race. A target tag could be created after the
+  # initial listing; re-inventory immediately before writing and compare its
+  # digest if it now exists.
+  list_target_tags "$target_image" "$target_tags" "$list_error"
+  if tag_exists "$target_tags" "$image_tag"; then
+    verify_existing_tag
     return
   fi
 
@@ -136,8 +151,8 @@ while IFS= read -r image_tag; do
       ;;
   esac
 
-  sync_tag "$github_image" "$github_tags" "$image_tag"
-  sync_tag "$dockerhub_image" "$dockerhub_tags" "$image_tag"
+  sync_tag "$github_image" "$github_tags" "$github_list_error" "$image_tag"
+  sync_tag "$dockerhub_image" "$dockerhub_tags" "$dockerhub_list_error" "$image_tag"
   tag_count=$((tag_count + 1))
   printf 'TAG\t%s\t%s\n' "$tag_count" "$image_tag"
 done < "$sorted_source_tags"
