@@ -108,6 +108,10 @@ assert_contains Makefile 'BUILD_DEPENDENCIES = go gcc ragel npm bash'
 # This is a literal Make variable reference.
 # shellcheck disable=SC2016
 assert_contains Makefile 'frontend_root: $(FRONTEND_NODE_MODULES)'
+# A clean checkout must generate translations before starting the dev server,
+# because the frontend imports this generated file during module loading.
+# shellcheck disable=SC2016
+assert_contains Makefile 'serve_frontend_dev: npminstall $(TRANSLATION_OUTPUT)'
 
 assert_contains ci/Dockerfile "https://github.com/lightmeter-ai/ControlCenter"
 # These are literal Dockerfile variables.
@@ -120,6 +124,8 @@ assert_contains ci/Dockerfile '# syntax=docker/dockerfile:1'
 assert_contains ci/Dockerfile 'node:16.20.2-alpine3.18@sha256:a1f9d027912b58a7c75be7716c97cfbc6d3099f3a97ed84aa490be9dee20e787'
 assert_contains ci/Dockerfile "    bash \\"
 assert_not_contains ci/Dockerfile 'NODE_OPTIONS=--openssl-legacy-provider'
+assert_contains ci/Dockerfile 'org.opencontainers.image.licenses="AGPL-3.0-only"'
+assert_not_contains ci/Dockerfile 'org.opencontainers.image.licenses="AGPL-3.0-or-later"'
 # This literal label must follow the actual source ref for both releases and nightlies.
 # shellcheck disable=SC2016
 assert_contains ci/Dockerfile 'blob/${LIGHTMETER_REF}/README.md'
@@ -128,6 +134,9 @@ assert_contains .github/workflows/ci.yml '--load'
 assert_contains .github/workflows/release.yml 'docker buildx build'
 assert_contains .github/workflows/release.yml '--load'
 assert_contains .github/workflows/release.yml "group: release-\${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+assert_contains .github/workflows/release.yml 'update_latest:'
+assert_contains .github/workflows/release.yml 'default: false'
+assert_contains .github/workflows/release.yml "PUSH_LATEST: \${{ github.event_name == 'push' || inputs.update_latest }}"
 # These are literal variables in the workflow and publication script.
 # shellcheck disable=SC2016
 assert_contains .github/workflows/release.yml 'release "${RELEASE_TAG}" controlcenter-release:local'
@@ -143,6 +152,13 @@ assert_contains .github/workflows/security.yml 'set -o pipefail'
 # This is a literal Bash PIPESTATUS reference in the workflow.
 # shellcheck disable=SC2016
 assert_contains .github/workflows/security.yml 'govuln_status=${PIPESTATUS[0]}'
+# These are literal shell variables in the workflow.
+# shellcheck disable=SC2016
+assert_contains .github/workflows/security.yml 'case "$govuln_status" in'
+assert_contains .github/workflows/security.yml '3)'
+# shellcheck disable=SC2016
+assert_contains .github/workflows/security.yml 'govulncheck failed with status ${govuln_status}'
+assert_step_blocking .github/workflows/security.yml 'Run govulncheck'
 assert_contains .github/workflows/security.yml 'npm-audit.json'
 assert_contains .github/workflows/security.yml 'report.metadata.vulnerabilities'
 assert_contains .github/workflows/security.yml 'npm audit did not produce a valid vulnerability report'

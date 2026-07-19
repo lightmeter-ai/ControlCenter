@@ -72,17 +72,23 @@ jobs:
       - name: Install pinned govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.0.4
       - name: Run govulncheck
-        continue-on-error: true
         run: |
           set +e
           set -o pipefail
           "$(go env GOPATH)/bin/govulncheck" ./... 2>&1 | tee govulncheck.txt
           govuln_status=${PIPESTATUS[0]}
           set -e
-          if [ "$govuln_status" -ne 0 ]; then
-            echo "::warning::govulncheck exited with status ${govuln_status}; see govulncheck-report"
-            exit "$govuln_status"
-          fi
+          case "$govuln_status" in
+            0)
+              ;;
+            3)
+              echo "::warning::govulncheck found reachable vulnerabilities in legacy dependencies; see govulncheck-report"
+              ;;
+            *)
+              echo "::error::govulncheck failed with status ${govuln_status}; see govulncheck-report"
+              exit "$govuln_status"
+              ;;
+          esac
       - name: Upload vulnerability evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

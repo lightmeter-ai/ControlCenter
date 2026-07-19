@@ -11,6 +11,15 @@ image_tag=$1
 publication_kind=$2
 source_ref=$3
 local_image=${4:-}
+push_latest=${PUSH_LATEST:-false}
+
+case "$push_latest" in
+  true|false) ;;
+  *)
+    echo "PUSH_LATEST must be true or false" >&2
+    exit 2
+    ;;
+esac
 
 case "$image_tag" in
   ''|*[!A-Za-z0-9._-]*)
@@ -50,9 +59,14 @@ if [ -n "$local_image" ]; then
 
   set -- \
     "docker.io/lightmeter/controlcenter:$image_tag" \
-    "ghcr.io/lightmeter-ai/controlcenter:$image_tag" \
-    docker.io/lightmeter/controlcenter:latest \
-    ghcr.io/lightmeter-ai/controlcenter:latest
+    "ghcr.io/lightmeter-ai/controlcenter:$image_tag"
+
+  if [ "$push_latest" = true ]; then
+    set -- \
+      "$@" \
+      docker.io/lightmeter/controlcenter:latest \
+      ghcr.io/lightmeter-ai/controlcenter:latest
+  fi
 
   for target_ref in "$@"; do
     docker tag "$local_image" "$target_ref"
