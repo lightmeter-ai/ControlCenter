@@ -18,3 +18,7 @@ Copyright: Open Sans Font Developers
 Files: acceptance_tests/* test_files/* docs/* po/* release_notes/* tools/* pkg/postfix/logparser/*.sh pkg/postfix/logparser/corpus/* recommendation/*.json screenshot.png sonar-project.properties go.* frontend/controlcenter/* .codeclimate.yml Makefile VERSION.txt .gitignore .adr-dir/* .gitlab/* .ignore .gitlab-ci.yml .dockerignore .golangci.yml CLA cli_usage.md .adr-dir ci/* tracking/test_files/* examples/mailtracking/to_json.sh domainmapping/*.json
 License: AGPL-3.0-only
 Copyright: Lightmeter Project <hello@lightmeter.io>
+
+Files: .github/workflows/*
+License: AGPL-3.0-only
+Copyright: Lightmeter Project <hello@lightmeter.io>

@@ -113,6 +113,11 @@ assert_contains .github/workflows/security.yml 'golangci-lint-1.59.1-linux-amd64
 assert_contains .github/workflows/security.yml 'c30696f1292cff8778a495400745f0f9c0406a3f38d8bb12cef48d599f6c7791'
 assert_contains .github/workflows/security.yml 'golangci-output-checkstyle.xml'
 assert_contains .github/workflows/security.yml "vars.SONAR_HOST_URL || 'https://sonarcloud.io'"
+assert_not_contains .github/workflows/security.yml 'golang/govulncheck-action@'
+assert_contains .github/workflows/security.yml 'golang.org/x/vuln/cmd/govulncheck@v1.0.4'
+assert_contains .github/workflows/security.yml 'npm-audit.json'
+assert_contains .github/workflows/ci.yml 'npm run lint -- src'
+assert_contains .reuse/dep5 'Files: .github/workflows/*'
 assert_contains README.md "github.com/lightmeter-ai/ControlCenter/actions"
 assert_contains RELEASING.md "GitHub"
 assert_contains .github/workflows/migrate-images.yml "packages: write"
