@@ -60,6 +60,7 @@ assert_file .github/workflows/migrate-images.yml
 assert_file docs/GITHUB_MIGRATION.md
 assert_file ci/check_npm_audit_baseline.js
 assert_file ci/npm-audit-baseline.json
+assert_file ci/test_migrate_gitlab_images.sh
 assert_file ci/test_npm_audit_baseline.sh
 
 # Every pull request must exercise the migration guard; path-filtered triggers
@@ -109,6 +110,10 @@ assert_contains ci/migrate_gitlab_images.sh "registry.gitlab.com/lightmeter/cont
 assert_contains ci/migrate_gitlab_images.sh 'crane ls "$source_image" > "$source_tags"'
 # shellcheck disable=SC2016
 assert_contains ci/migrate_gitlab_images.sh 'done < "$sorted_source_tags"'
+assert_contains ci/migrate_gitlab_images.sh 'tag_exists'
+# This exact old fallback converted every digest error into a copy attempt.
+# shellcheck disable=SC2016
+assert_not_contains ci/migrate_gitlab_images.sh 'target_digest=$(crane digest "$target_ref" 2>/dev/null)'
 assert_contains ci/migrate_gitlab_releases.sh "SOURCE_GITLAB_PROJECT_ID"
 assert_contains ci/migrate_gitlab_releases.sh '--paginate'
 # These are literal shell variables in the release migration script.
@@ -135,6 +140,10 @@ assert_contains ci/Dockerfile 'GIT_COMMIT="$LIGHTMETER_COMMIT"'
 # These are literal Dockerfile variables.
 # shellcheck disable=SC2016
 assert_contains ci/Dockerfile 'GIT_BRANCH="$LIGHTMETER_REF"'
+test "$(grep -F -c 'ARG LIGHTMETER_COMMIT=unknown' ci/Dockerfile)" -eq 2 \
+  || fail 'ci/Dockerfile must default commit metadata in both build and final stages'
+test "$(grep -F -c 'ARG LIGHTMETER_REF=unknown' ci/Dockerfile)" -eq 2 \
+  || fail 'ci/Dockerfile must default ref metadata in both build and final stages'
 assert_contains ci/Dockerfile '# syntax=docker/dockerfile:1'
 assert_contains ci/Dockerfile 'node:16.20.2-alpine3.18@sha256:a1f9d027912b58a7c75be7716c97cfbc6d3099f3a97ed84aa490be9dee20e787'
 assert_contains ci/Dockerfile "    bash \\"
@@ -233,6 +242,7 @@ assert_contains .github/workflows/release.yml "release/**"
 assert_contains ci/release_on_github.sh "release/"
 
 sh ci/test_publish_docker_image.sh
+sh ci/test_migrate_gitlab_images.sh
 sh ci/test_npm_audit_baseline.sh
 
 printf '%s\n' 'PASS: GitHub migration contract is satisfied'

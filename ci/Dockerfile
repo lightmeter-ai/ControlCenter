@@ -32,9 +32,9 @@ FROM source AS test
 RUN make mocks && go test ./... -race -count=1
 
 FROM source AS builder
-ARG LIGHTMETER_COMMIT
-ARG LIGHTMETER_REF
-ARG IMAGE_TAG
+ARG LIGHTMETER_COMMIT=unknown
+ARG LIGHTMETER_REF=unknown
+ARG IMAGE_TAG=unknown
 RUN --mount=type=cache,target=/root/.npm \
     make static_release \
       GIT_COMMIT="$LIGHTMETER_COMMIT" \
@@ -42,10 +42,10 @@ RUN --mount=type=cache,target=/root/.npm \
 
 FROM scratch
 
-ARG LIGHTMETER_VERSION
-ARG LIGHTMETER_COMMIT
-ARG LIGHTMETER_REF
-ARG IMAGE_TAG
+ARG LIGHTMETER_VERSION=unknown
+ARG LIGHTMETER_COMMIT=unknown
+ARG LIGHTMETER_REF=unknown
+ARG IMAGE_TAG=unknown
 
 LABEL org.opencontainers.image.title="Lightmeter Control Center"
 LABEL org.opencontainers.image.source="https://github.com/lightmeter-ai/ControlCenter"
