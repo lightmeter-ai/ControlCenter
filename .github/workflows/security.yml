@@ -173,6 +173,13 @@ jobs:
             exit 1
           fi
 
+          if ! jq --exit-status \
+            'type == "object" and has("valid") and (.valid | type == "boolean")' \
+            "$validation_file" >/dev/null; then
+            echo "::error::SonarCloud credential validation returned an invalid response"
+            exit 1
+          fi
+
           if jq --exit-status '.valid == true' "$validation_file" >/dev/null; then
             echo 'enabled=true' >> "$GITHUB_OUTPUT"
           else

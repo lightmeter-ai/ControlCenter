@@ -22,7 +22,20 @@ assert_not_contains() {
 }
 
 assert_step_blocking() {
-  step_block=$(sed -n "/- name: $2/,+3p" "$1")
+  step_header="      - name: $2"
+  if ! step_block=$(awk -v header="$step_header" '
+    $0 == header {
+      found = 1
+      in_step = 1
+      print
+      next
+    }
+    in_step && $0 ~ /^      - (name|uses):/ { exit }
+    in_step { print }
+    END { if (!found) exit 2 }
+  ' "$1"); then
+    fail "$1 is missing the $2 step"
+  fi
   if printf '%s\n' "$step_block" | grep -F 'continue-on-error: true' >/dev/null; then
     fail "$1 leaves the $2 step non-blocking"
   fi
@@ -87,7 +100,10 @@ assert_contains ci/migrate_gitlab_releases.sh '--paginate'
 # shellcheck disable=SC2016
 assert_contains ci/migrate_gitlab_releases.sh 'done < "$sorted_releases"'
 assert_contains tools/go_test.sh '#!/usr/bin/env bash'
-assert_contains tools/update_cli_docs.sh '| expand -t 8 > cli_usage.md'
+assert_contains tools/update_cli_docs.sh "raw_output=\$(mktemp)"
+assert_contains tools/update_cli_docs.sh "formatted_output=\$(mktemp)"
+assert_contains tools/update_cli_docs.sh "expand -t 8 \"\$raw_output\" > \"\$formatted_output\""
+assert_not_contains tools/update_cli_docs.sh ') | expand'
 assert_contains Makefile 'BUILD_DEPENDENCIES = go gcc ragel npm bash'
 # This is a literal Make variable reference.
 # shellcheck disable=SC2016
@@ -136,6 +152,7 @@ assert_step_blocking .github/workflows/ci.yml 'Verify generated CLI documentatio
 assert_contains .github/workflows/ci.yml 'node-version: 18.20.8'
 assert_contains .github/workflows/security.yml 'id: sonar-auth'
 assert_contains .github/workflows/security.yml "steps.sonar-auth.outputs.enabled == 'true'"
+assert_contains .github/workflows/security.yml 'type == "object" and has("valid") and (.valid | type == "boolean")'
 if sed -n '/^  sonarcloud:/,/^  license-compliance:/p' .github/workflows/security.yml \
   | grep -F 'continue-on-error: true' >/dev/null; then
   fail '.github/workflows/security.yml leaves the SonarCloud job non-blocking'
@@ -144,6 +161,23 @@ assert_contains .reuse/dep5 'Files: .github/workflows/*'
 assert_contains README.md "github.com/lightmeter-ai/ControlCenter/actions"
 assert_contains RELEASING.md "GitHub"
 assert_contains .github/workflows/migrate-images.yml "packages: write"
+
+# A generator failure must propagate without replacing the last known-good
+# documentation. This guards the POSIX-shell implementation against pipelines
+# that report only the formatter's exit status.
+docs_before=$(cksum cli_usage.md)
+failure_fixture_dir=$(mktemp -d)
+printf '%s\n' '#!/bin/sh' 'exit 23' > "$failure_fixture_dir/go"
+chmod +x "$failure_fixture_dir/go"
+generation_status=0
+PATH="$failure_fixture_dir:$PATH" ./tools/update_cli_docs.sh >/dev/null 2>&1 \
+  || generation_status=$?
+docs_after=$(cksum cli_usage.md)
+rm -rf "$failure_fixture_dir"
+[ "$generation_status" -ne 0 ] \
+  || fail 'CLI documentation generation masked a go build failure'
+[ "$docs_before" = "$docs_after" ] \
+  || fail 'failed CLI documentation generation replaced cli_usage.md'
 
 # Version tags remain release/<VERSION>, preserving the public tag contract.
 assert_contains .github/workflows/release.yml "release/**"
