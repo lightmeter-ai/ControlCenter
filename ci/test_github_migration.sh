@@ -79,6 +79,9 @@ assert_contains ci/Dockerfile 'GIT_COMMIT="$LIGHTMETER_COMMIT"'
 # shellcheck disable=SC2016
 assert_contains ci/Dockerfile 'GIT_BRANCH="$LIGHTMETER_REF"'
 assert_contains ci/Dockerfile '# syntax=docker/dockerfile:1'
+# This literal label must follow the actual source ref for both releases and nightlies.
+# shellcheck disable=SC2016
+assert_contains ci/Dockerfile 'blob/${LIGHTMETER_REF}/README.md'
 assert_contains .github/workflows/ci.yml 'docker buildx build'
 assert_contains .github/workflows/ci.yml '--load'
 assert_contains .github/workflows/release.yml 'docker buildx build'

@@ -39,13 +39,14 @@ FROM scratch
 
 ARG LIGHTMETER_VERSION
 ARG LIGHTMETER_COMMIT
+ARG LIGHTMETER_REF
 ARG IMAGE_TAG
 
 LABEL org.opencontainers.image.title="Lightmeter Control Center"
 LABEL org.opencontainers.image.source="https://github.com/lightmeter-ai/ControlCenter"
 LABEL org.opencontainers.image.url="https://lightmeter.io"
 LABEL org.opencontainers.image.description="Mail server delivery monitoring"
-LABEL org.opencontainers.image.documentation="https://github.com/lightmeter-ai/ControlCenter/blob/release/${IMAGE_TAG}/README.md"
+LABEL org.opencontainers.image.documentation="https://github.com/lightmeter-ai/ControlCenter/blob/${LIGHTMETER_REF}/README.md"
 LABEL org.opencontainers.image.vendor="Lightmeter Project"
 LABEL org.opencontainers.image.version="${LIGHTMETER_VERSION}"
 LABEL org.opencontainers.image.revision="${LIGHTMETER_COMMIT}"
