@@ -28,8 +28,14 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 
+release_pages_json="$migration_tmp/release-pages.json"
 releases_json="$migration_tmp/releases.json"
-glab api "projects/$source_project_id/releases?per_page=100" > "$releases_json"
+glab api "projects/$source_project_id/releases?per_page=100" --paginate > "$release_pages_json"
+
+# glab writes one JSON array per exhausted API page. Collapse that JSON stream
+# into one array so all later selection and completeness checks see every page.
+page_count=$(jq -s 'length' "$release_pages_json")
+jq -s 'add // []' "$release_pages_json" > "$releases_json"
 
 release_count=$(jq 'length' "$releases_json")
 if [ "$release_count" -eq 0 ]; then
@@ -37,7 +43,8 @@ if [ "$release_count" -eq 0 ]; then
   exit 1
 fi
 
-echo "source releases: $release_count"
+printf 'source release pagination exhausted: %s pages, %s releases\n' \
+  "$page_count" "$release_count"
 
 jq -c 'sort_by(.released_at)[]' "$releases_json" |
 while IFS= read -r release_json; do
