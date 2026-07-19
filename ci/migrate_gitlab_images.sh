@@ -15,7 +15,7 @@ case "$apply_migration" in
     ;;
 esac
 
-for required_command in awk crane mktemp sort; do
+for required_command in awk crane grep mktemp sort; do
   command -v "$required_command" >/dev/null || {
     echo "missing required command: $required_command" >&2
     exit 1
@@ -62,6 +62,10 @@ list_target_tags() {
 
   printf 'failed to inventory target image before migration: %s\n' \
     "$target_image" >&2
+  while IFS= read -r registry_error || [ -n "$registry_error" ]; do
+    printf 'registry error for %s: %s\n' \
+      "$target_image" "$registry_error" >&2
+  done < "$list_error"
   return 1
 }
 

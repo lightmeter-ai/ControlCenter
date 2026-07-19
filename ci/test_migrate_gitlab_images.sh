@@ -58,5 +58,7 @@ if grep -F 'copy ' "$FAKE_CRANE_LOG" >/dev/null; then
 fi
 grep -F 'failed to inventory target image before migration' \
   "$task_tmp/denied.err" >/dev/null
+grep -F 'registry error for ghcr.io/lightmeter-ai/controlcenter: DENIED: requested access to the resource is denied' \
+  "$task_tmp/denied.err" >/dev/null
 
 printf '%s\n' 'PASS: image migration copies only confirmed-missing tags and never overwrites on errors'
