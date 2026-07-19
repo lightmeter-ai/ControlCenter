@@ -75,7 +75,17 @@ function auditSnapshot(report, lockfileContents) {
     fail('audit report does not contain a vulnerabilities object')
   }
 
-  const findings = Object.entries(report.vulnerabilities)
+  const vulnerabilityEntries = Object.entries(report.vulnerabilities)
+  for (const [name, finding] of vulnerabilityEntries) {
+    if (finding === null || typeof finding !== 'object') {
+      fail(`invalid vulnerability entry for ${name}`)
+    }
+    if (typeof finding.severity !== 'string') {
+      fail(`vulnerability entry for ${name} has no severity`)
+    }
+  }
+
+  const findings = vulnerabilityEntries
     .filter(([, finding]) => finding.severity === 'high' || finding.severity === 'critical')
     .map(([name, finding]) => stableObject({
       name,

@@ -27,6 +27,15 @@ if node ci/check_npm_audit_baseline.js check "$audit_report" "$lockfile" "$basel
   exit 1
 fi
 
+printf '%s\n' '{"metadata":{"vulnerabilities":{"info":0,"low":0,"moderate":0,"high":1,"critical":1,"total":2}},"vulnerabilities":{"broken":null}}' > "$audit_report"
+if invalid_output=$(node ci/check_npm_audit_baseline.js check \
+  "$audit_report" "$lockfile" "$baseline" 2>&1); then
+  echo 'npm audit baseline accepted a null vulnerability entry' >&2
+  exit 1
+fi
+printf '%s\n' "$invalid_output" \
+  | grep -F 'npm audit baseline error: invalid vulnerability entry for broken' >/dev/null
+
 cp "$task_tmp/original-npm-audit.json" "$audit_report"
 printf '%s\n' '{"lockfileVersion":3}' > "$lockfile"
 if node ci/check_npm_audit_baseline.js check "$audit_report" "$lockfile" "$baseline" >/dev/null 2>&1; then
