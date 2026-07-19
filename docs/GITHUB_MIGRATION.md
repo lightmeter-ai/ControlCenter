@@ -55,6 +55,13 @@ holds the deletion-readiness project export. The 2026-07-19 export is
 GitHub reports the same digest for the uploaded release asset. Keep that
 repository private because the export includes confidential project records.
 
+The GitLab container registry held 55 tags at migration time. Docker Hub
+already held 52 matching tag names and was missing only `0.0.2`, `0.0.3`, and
+`0.0.4`. `.github/workflows/migrate-images.yml` uses pinned `crane` tooling and
+`ci/migrate_gitlab_images.sh` to copy missing tags to Docker Hub and all tags to
+GHCR. It refuses to overwrite a target tag whose manifest digest differs from
+GitLab and verifies every copied digest before reporting success.
+
 GitLab issues, merge requests, discussions, labels, milestones, uploads, and
 other project metadata must be retained in a private export before any account
 deletion. Confidential issue content must never be copied to this public

@@ -25,6 +25,7 @@ assert_file .github/workflows/ci.yml
 assert_file .github/workflows/security.yml
 assert_file .github/workflows/release.yml
 assert_file .github/workflows/nightly.yml
+assert_file .github/workflows/migrate-images.yml
 assert_file docs/GITHUB_MIGRATION.md
 
 # Every pull request must exercise the migration guard; path-filtered triggers
@@ -54,8 +55,8 @@ for migration_file in \
   .github/workflows/security.yml \
   .github/workflows/release.yml \
   .github/workflows/nightly.yml \
+  .github/workflows/migrate-images.yml \
   ci/Dockerfile \
-  ci/migrate_gitlab_releases.sh \
   ci/publish_docker_image.sh \
   ci/release_on_github.sh
 do
@@ -64,6 +65,11 @@ do
   assert_not_contains "$migration_file" "CI_JOB_TOKEN"
   assert_not_contains "$migration_file" "CI_REGISTRY"
 done
+
+# One-shot, manually invoked migration utilities are the only files allowed to
+# read historical GitLab release and registry data.
+assert_contains ci/migrate_gitlab_images.sh "registry.gitlab.com/lightmeter/controlcenter"
+assert_contains ci/migrate_gitlab_releases.sh "SOURCE_GITLAB_PROJECT_ID"
 
 assert_contains ci/Dockerfile "https://github.com/lightmeter-ai/ControlCenter"
 # These are literal Dockerfile variables.
@@ -74,6 +80,7 @@ assert_contains ci/Dockerfile 'GIT_COMMIT="$LIGHTMETER_COMMIT"'
 assert_contains ci/Dockerfile 'GIT_BRANCH="$LIGHTMETER_REF"'
 assert_contains README.md "github.com/lightmeter-ai/ControlCenter/actions"
 assert_contains RELEASING.md "GitHub"
+assert_contains .github/workflows/migrate-images.yml "packages: write"
 
 # Version tags remain release/<VERSION>, preserving the public tag contract.
 assert_contains .github/workflows/release.yml "release/**"
