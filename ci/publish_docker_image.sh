@@ -2,14 +2,15 @@
 
 set -eu
 
-if [ "$#" -ne 3 ]; then
-  echo "usage: $0 <image-tag> <release|nightly> <source-ref>" >&2
+if [ "$#" -lt 3 ] || [ "$#" -gt 4 ]; then
+  echo "usage: $0 <image-tag> <release|nightly> <source-ref> [local-image]" >&2
   exit 2
 fi
 
 image_tag=$1
 publication_kind=$2
 source_ref=$3
+local_image=${4:-}
 
 case "$image_tag" in
   ''|*[!A-Za-z0-9._-]*)
@@ -26,12 +27,43 @@ case "$publication_kind" in
     ;;
 esac
 
+if [ "$publication_kind" = release ] && [ -z "$local_image" ]; then
+  echo "release publication requires the already-validated local image" >&2
+  exit 2
+fi
+
+if [ "$publication_kind" = nightly ] && [ -n "$local_image" ]; then
+  echo "nightly publication does not accept a local image" >&2
+  exit 2
+fi
+
 case "$source_ref" in
   ''|*[!A-Za-z0-9._/-]*)
     echo "invalid source ref: $source_ref" >&2
     exit 2
     ;;
 esac
+
+if [ -n "$local_image" ]; then
+  docker image inspect "$local_image" >/dev/null
+  local_image_id=$(docker image inspect --format '{{.Id}}' "$local_image")
+
+  set -- \
+    "docker.io/lightmeter/controlcenter:$image_tag" \
+    "ghcr.io/lightmeter-ai/controlcenter:$image_tag" \
+    docker.io/lightmeter/controlcenter:latest \
+    ghcr.io/lightmeter-ai/controlcenter:latest
+
+  for target_ref in "$@"; do
+    docker tag "$local_image" "$target_ref"
+    target_image_id=$(docker image inspect --format '{{.Id}}' "$target_ref")
+    test "$target_image_id" = "$local_image_id"
+    docker push "$target_ref"
+    printf 'PUSHED\t%s\t%s\n' "$target_ref" "$local_image_id"
+  done
+
+  exit 0
+fi
 
 set -- \
   --file ci/Dockerfile \
@@ -43,11 +75,5 @@ set -- \
   --build-arg "IMAGE_TAG=$image_tag" \
   --tag "docker.io/lightmeter/controlcenter:$image_tag" \
   --tag "ghcr.io/lightmeter-ai/controlcenter:$image_tag"
-
-if [ "$publication_kind" = release ]; then
-  set -- "$@" \
-    --tag docker.io/lightmeter/controlcenter:latest \
-    --tag ghcr.io/lightmeter-ai/controlcenter:latest
-fi
 
 docker buildx build "$@" .

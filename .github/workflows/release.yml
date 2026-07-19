@@ -46,6 +46,7 @@ jobs:
           docker buildx build \
             --load \
             --file ci/Dockerfile \
+            --platform linux/amd64 \
             --build-arg LIGHTMETER_VERSION="$(cat VERSION.txt)" \
             --build-arg LIGHTMETER_COMMIT="$(git rev-parse HEAD)" \
             --build-arg LIGHTMETER_REF="${RELEASE_TAG}" \
@@ -71,7 +72,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Publish Docker Hub and GHCR images
-        run: sh ci/publish_docker_image.sh "$(cat VERSION.txt)" release "${RELEASE_TAG}"
+        run: sh ci/publish_docker_image.sh "$(cat VERSION.txt)" release "${RELEASE_TAG}" controlcenter-release:local
       - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

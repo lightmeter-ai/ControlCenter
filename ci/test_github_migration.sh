@@ -104,9 +104,15 @@ assert_contains .github/workflows/ci.yml '--load'
 assert_contains .github/workflows/release.yml 'docker buildx build'
 assert_contains .github/workflows/release.yml '--load'
 assert_contains .github/workflows/release.yml "group: release-\${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+# These are literal variables in the workflow and publication script.
+# shellcheck disable=SC2016
+assert_contains .github/workflows/release.yml 'release "${RELEASE_TAG}" controlcenter-release:local'
+# shellcheck disable=SC2016
+assert_contains ci/publish_docker_image.sh 'docker tag "$local_image" "$target_ref"'
 assert_contains .github/workflows/security.yml 'golangci-lint-1.59.1-linux-amd64.tar.gz'
 assert_contains .github/workflows/security.yml 'c30696f1292cff8778a495400745f0f9c0406a3f38d8bb12cef48d599f6c7791'
 assert_contains .github/workflows/security.yml 'golangci-output-checkstyle.xml'
+assert_contains .github/workflows/security.yml "vars.SONAR_HOST_URL || 'https://sonarcloud.io'"
 assert_contains README.md "github.com/lightmeter-ai/ControlCenter/actions"
 assert_contains RELEASING.md "GitHub"
 assert_contains .github/workflows/migrate-images.yml "packages: write"
@@ -114,5 +120,7 @@ assert_contains .github/workflows/migrate-images.yml "packages: write"
 # Version tags remain release/<VERSION>, preserving the public tag contract.
 assert_contains .github/workflows/release.yml "release/**"
 assert_contains ci/release_on_github.sh "release/"
+
+sh ci/test_publish_docker_image.sh
 
 printf '%s\n' 'PASS: GitHub migration contract is satisfied'
