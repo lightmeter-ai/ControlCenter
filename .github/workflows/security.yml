@@ -115,19 +115,18 @@ jobs:
         run: |
           audit_status=0
           npm audit --audit-level=high --json > npm-audit.json || audit_status=$?
-          node ../../ci/check_npm_audit_baseline.js check \
-            npm-audit.json package-lock.json ../../ci/npm-audit-baseline.json
           case "$audit_status" in
-            0)
-              ;;
-            1)
-              echo "::warning::npm audit matched the reviewed legacy baseline; see npm-audit-report"
-              ;;
+            0|1) ;;
             *)
               echo "::error::npm audit failed with unexpected status ${audit_status}; see npm-audit-report"
               exit "$audit_status"
               ;;
           esac
+          node ../../ci/check_npm_audit_baseline.js check \
+            npm-audit.json package-lock.json ../../ci/npm-audit-baseline.json
+          if [ "$audit_status" -eq 1 ]; then
+            echo "::warning::npm audit matched the reviewed legacy baseline; see npm-audit-report"
+          fi
           printf 'npm audit status=%s report_bytes=%s\n' \
             "$audit_status" "$(wc -c < npm-audit.json)"
       - name: Upload npm audit evidence

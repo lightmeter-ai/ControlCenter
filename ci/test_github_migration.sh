@@ -25,6 +25,13 @@ assert_exact_line() {
   grep -F -x -- "$2" "$1" >/dev/null || fail "$1 does not contain exact line: $2"
 }
 
+assert_before() {
+  first_line=$(grep -n -F -m 1 -- "$2" "$1" | cut -d: -f1)
+  second_line=$(grep -n -F -m 1 -- "$3" "$1" | cut -d: -f1)
+  [ -n "$first_line" ] && [ -n "$second_line" ] && [ "$first_line" -lt "$second_line" ] \
+    || fail "$1 must place '$2' before '$3'"
+}
+
 assert_step_blocking() {
   step_header="      - name: $2"
   if ! step_block=$(awk -v header="$step_header" '
@@ -180,6 +187,10 @@ assert_not_contains ci/check_npm_audit_baseline.js 'localeCompare'
 assert_contains .github/workflows/security.yml 'case "$audit_status" in'
 # shellcheck disable=SC2016
 assert_contains .github/workflows/security.yml 'npm audit failed with unexpected status ${audit_status}'
+# shellcheck disable=SC2016
+assert_before .github/workflows/security.yml \
+  'npm audit failed with unexpected status ${audit_status}' \
+  'node ../../ci/check_npm_audit_baseline.js check'
 assert_step_blocking .github/workflows/security.yml 'Audit frontend dependencies'
 assert_contains .github/workflows/ci.yml 'npm run lint -- src'
 assert_step_blocking .github/workflows/ci.yml 'Lint frontend'
