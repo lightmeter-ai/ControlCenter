@@ -21,6 +21,10 @@ assert_not_contains() {
   fi
 }
 
+assert_exact_line() {
+  grep -F -x -- "$2" "$1" >/dev/null || fail "$1 does not contain exact line: $2"
+}
+
 assert_step_blocking() {
   step_header="      - name: $2"
   if ! step_block=$(awk -v header="$step_header" '
@@ -176,6 +180,8 @@ assert_contains .github/workflows/ci.yml 'npm run lint -- src'
 assert_step_blocking .github/workflows/ci.yml 'Lint frontend'
 assert_step_blocking .github/workflows/ci.yml 'Verify generated CLI documentation'
 assert_contains .github/workflows/ci.yml 'node-version: 18.20.8'
+assert_exact_line .github/workflows/ci.yml '  NODE_VERSION: 16.20.2'
+assert_exact_line .github/workflows/security.yml '          node-version: 16.20.2'
 assert_contains .github/workflows/security.yml 'id: sonar-auth'
 assert_contains .github/workflows/security.yml "steps.sonar-auth.outputs.enabled == 'true'"
 assert_contains .github/workflows/security.yml 'type == "object" and has("valid") and (.valid | type == "boolean")'
