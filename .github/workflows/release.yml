@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "release/**"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release/<VERSION> tag to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish release and images
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      packages: write
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+      - name: Validate release contract
+        run: |
+          test "${RELEASE_TAG}" = "release/$(cat VERSION.txt)"
+          test -f "release_notes/$(cat VERSION.txt)"
+          test "$(git rev-parse HEAD)" = "$(git rev-list -n 1 "${RELEASE_TAG}")"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - name: Build release image
+        run: |
+          docker buildx build \
+            --load \
+            --file ci/Dockerfile \
+            --platform linux/amd64 \
+            --build-arg LIGHTMETER_VERSION="$(cat VERSION.txt)" \
+            --build-arg LIGHTMETER_COMMIT="$(git rev-parse HEAD)" \
+            --build-arg LIGHTMETER_REF="${RELEASE_TAG}" \
+            --build-arg IMAGE_TAG="$(cat VERSION.txt)" \
+            --tag controlcenter-release:local \
+            .
+      - name: Extract release binary
+        run: |
+          image_container="$(docker create controlcenter-release:local)"
+          docker cp "${image_container}:/lightmeter" ./lightmeter
+          docker rm "${image_container}"
+      - name: Prepare GitHub release assets
+        run: sh ci/release_on_github.sh prepare "${RELEASE_TAG}"
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Publish Docker Hub and GHCR images
+        run: sh ci/publish_docker_image.sh "$(cat VERSION.txt)" release "${RELEASE_TAG}" controlcenter-release:local
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: sh ci/release_on_github.sh publish "${RELEASE_TAG}"

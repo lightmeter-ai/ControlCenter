@@ -1,0 +1,20 @@
+#!/bin/sh
+
+set -eu
+
+: "${FAKE_DOCKER_LOG:?FAKE_DOCKER_LOG is required}"
+printf '%s\n' "$*" >> "$FAKE_DOCKER_LOG"
+
+case "${1:-} ${2:-}" in
+  'image inspect')
+    if [ "${3:-}" = --format ]; then
+      printf '%s\n' 'sha256:validated-local-image'
+    fi
+    ;;
+  'tag '*|'push '*|'buildx build')
+    ;;
+  *)
+    printf 'unexpected fake docker command: %s\n' "$*" >&2
+    exit 1
+    ;;
+esac

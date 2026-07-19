@@ -1,6 +1,10 @@
 *.log
-ci
-.docker-cache
+.git
+.github
 .gitlab-ci.yml
+.docker-cache
+**/node_modules
+acceptance_tests
+ci
 .golangci.yml
 sonar-project.properties
