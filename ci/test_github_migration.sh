@@ -93,6 +93,9 @@ assert_contains ci/Dockerfile 'GIT_COMMIT="$LIGHTMETER_COMMIT"'
 # shellcheck disable=SC2016
 assert_contains ci/Dockerfile 'GIT_BRANCH="$LIGHTMETER_REF"'
 assert_contains ci/Dockerfile '# syntax=docker/dockerfile:1'
+assert_contains ci/Dockerfile 'node:16.20.2-alpine3.18@sha256:a1f9d027912b58a7c75be7716c97cfbc6d3099f3a97ed84aa490be9dee20e787'
+assert_contains ci/Dockerfile "    bash \\"
+assert_not_contains ci/Dockerfile 'NODE_OPTIONS=--openssl-legacy-provider'
 # This literal label must follow the actual source ref for both releases and nightlies.
 # shellcheck disable=SC2016
 assert_contains ci/Dockerfile 'blob/${LIGHTMETER_REF}/README.md'

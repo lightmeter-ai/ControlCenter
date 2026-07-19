@@ -1,8 +1,11 @@
 # syntax=docker/dockerfile:1
 
+FROM node:16.20.2-alpine3.18@sha256:a1f9d027912b58a7c75be7716c97cfbc6d3099f3a97ed84aa490be9dee20e787 AS node-toolchain
+
 FROM golang:1.21-alpine3.18@sha256:d390d5f2006c4c9cf19709d449a8463e7188643f444d06fcaa96f45b6c29363d AS toolchain
 
 RUN apk add --no-cache \
+    bash \
     ca-certificates \
     curl \
     gcc \
@@ -11,13 +14,15 @@ RUN apk add --no-cache \
     graphviz \
     libc-dev \
     make \
-    npm \
     python3 \
     ragel \
     rsync
 
-# The pinned Vue/Webpack toolchain predates OpenSSL 3.
-ENV NODE_OPTIONS=--openssl-legacy-provider
+# Keep the legacy Vue build on the same exact Node 16 toolchain as GitHub CI.
+COPY --from=node-toolchain /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-toolchain /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
 FROM toolchain AS source
 COPY . /src
