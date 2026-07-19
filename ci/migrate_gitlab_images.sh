@@ -15,10 +15,29 @@ case "$apply_migration" in
     ;;
 esac
 
-command -v crane >/dev/null || {
-  echo "missing required command: crane" >&2
-  exit 1
+for required_command in awk crane mktemp sort; do
+  command -v "$required_command" >/dev/null || {
+    echo "missing required command: $required_command" >&2
+    exit 1
+  }
+done
+
+migration_tmp=$(mktemp -d)
+cleanup() {
+  find "$migration_tmp" -mindepth 1 -delete
+  rmdir "$migration_tmp"
 }
+trap cleanup EXIT HUP INT TERM
+
+source_tags="$migration_tmp/source-tags"
+sorted_source_tags="$migration_tmp/source-tags.sorted"
+github_tags="$migration_tmp/github-tags"
+dockerhub_tags="$migration_tmp/dockerhub-tags"
+
+# Capture each fallible registry listing before processing it. In POSIX sh the
+# status of an upstream pipeline command can otherwise be silently lost.
+crane ls "$source_image" > "$source_tags"
+sort -V "$source_tags" > "$sorted_source_tags"
 
 sync_tag() {
   target_image=$1
@@ -56,7 +75,6 @@ sync_tag() {
 }
 
 tag_count=0
-crane ls "$source_image" | sort -V |
 while IFS= read -r image_tag; do
   case "$image_tag" in
     ''|*[!A-Za-z0-9._-]*)
@@ -69,13 +87,28 @@ while IFS= read -r image_tag; do
   sync_tag "$dockerhub_image" "$image_tag"
   tag_count=$((tag_count + 1))
   printf 'TAG\t%s\t%s\n' "$tag_count" "$image_tag"
-done
+done < "$sorted_source_tags"
 
-# POSIX pipelines execute the loop in a subshell, so count the source again for
-# the final completeness assertion rather than relying on tag_count here.
-source_count=$(crane ls "$source_image" | wc -l | tr -d ' ')
-github_count=$(crane ls "$github_image" 2>/dev/null | wc -l | tr -d ' ')
-dockerhub_count=$(crane ls "$dockerhub_image" 2>/dev/null | wc -l | tr -d ' ')
+source_count=$tag_count
+
+if ! crane ls "$github_image" > "$github_tags" 2>/dev/null; then
+  if [ "$apply_migration" = true ]; then
+    echo "failed to list migrated GitHub image: $github_image" >&2
+    exit 1
+  fi
+  : > "$github_tags"
+fi
+
+if ! crane ls "$dockerhub_image" > "$dockerhub_tags" 2>/dev/null; then
+  if [ "$apply_migration" = true ]; then
+    echo "failed to list migrated Docker Hub image: $dockerhub_image" >&2
+    exit 1
+  fi
+  : > "$dockerhub_tags"
+fi
+
+github_count=$(awk 'END { print NR }' "$github_tags")
+dockerhub_count=$(awk 'END { print NR }' "$dockerhub_tags")
 
 printf 'COUNTS\tsource=%s github=%s dockerhub=%s\n' \
   "$source_count" "$github_count" "$dockerhub_count"

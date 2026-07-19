@@ -69,6 +69,11 @@ done
 # One-shot, manually invoked migration utilities are the only files allowed to
 # read historical GitLab release and registry data.
 assert_contains ci/migrate_gitlab_images.sh "registry.gitlab.com/lightmeter/controlcenter"
+# These are literal shell variables in the migration script.
+# shellcheck disable=SC2016
+assert_contains ci/migrate_gitlab_images.sh 'crane ls "$source_image" > "$source_tags"'
+# shellcheck disable=SC2016
+assert_contains ci/migrate_gitlab_images.sh 'done < "$sorted_source_tags"'
 assert_contains ci/migrate_gitlab_releases.sh "SOURCE_GITLAB_PROJECT_ID"
 assert_contains ci/migrate_gitlab_releases.sh '--paginate'
 assert_contains tools/go_test.sh '#!/usr/bin/env bash'
