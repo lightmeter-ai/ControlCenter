@@ -1,0 +1,73 @@
+#!/bin/sh
+
+set -eu
+
+: "${FAKE_CRANE_LOG:?FAKE_CRANE_LOG is required}"
+: "${FAKE_CRANE_STATE:?FAKE_CRANE_STATE is required}"
+printf '%s\n' "$*" >> "$FAKE_CRANE_LOG"
+
+source_image=registry.gitlab.com/lightmeter/controlcenter
+github_image=ghcr.io/lightmeter-ai/controlcenter
+dockerhub_image=docker.io/lightmeter/controlcenter
+
+case "${1:-}" in
+  ls)
+    case "${2:-}" in
+      "$source_image"|"$dockerhub_image")
+        printf '%s\n' stable
+        ;;
+      "$github_image")
+        if [ "${FAKE_CRANE_GITHUB_LIST_DENIED:-false}" = true ]; then
+          echo 'DENIED: simulated authentication failure' >&2
+          exit 8
+        fi
+        github_list_count=$(grep -F -x "ls $github_image" "$FAKE_CRANE_LOG" \
+          | awk 'END { print NR }')
+        if [ "${FAKE_CRANE_GITHUB_APPEARS_AFTER_LIST:-false}" = true ] \
+          && [ "$github_list_count" -eq 1 ]; then
+          echo 'NAME_UNKNOWN: repository name not known to registry' >&2
+          exit 1
+        fi
+        if [ "${FAKE_CRANE_GITHUB_ABSENT:-false}" = true ] \
+          && ! grep -F -x "$github_image:stable" "$FAKE_CRANE_STATE" >/dev/null 2>&1; then
+          echo 'NAME_UNKNOWN: repository name not known to registry' >&2
+          exit 1
+        fi
+        printf '%s\n' stable
+        ;;
+      *)
+        echo "unexpected fake crane image: ${2:-}" >&2
+        exit 2
+        ;;
+    esac
+    ;;
+  digest)
+    case "${2:-}" in
+      "$source_image:stable"|"$dockerhub_image:stable")
+        printf '%s\n' sha256:stable
+        ;;
+      "$github_image:stable")
+        if [ "${FAKE_CRANE_FAIL_GITHUB_DIGEST:-false}" = true ]; then
+          echo 'simulated registry transport failure' >&2
+          exit 7
+        fi
+        if [ "${FAKE_CRANE_GITHUB_DIVERGED:-false}" = true ]; then
+          printf '%s\n' sha256:diverged
+          exit
+        fi
+        printf '%s\n' sha256:stable
+        ;;
+      *)
+        echo "unexpected fake crane ref: ${2:-}" >&2
+        exit 2
+        ;;
+    esac
+    ;;
+  copy)
+    printf '%s\n' "${3:-}" >> "$FAKE_CRANE_STATE"
+    ;;
+  *)
+    echo "unexpected fake crane command: $*" >&2
+    exit 2
+    ;;
+esac
