@@ -121,9 +121,12 @@ clean_postfix_parser:
 	@rm -vf pkg/postfix/logparser/rawparser/*.gen.go
 
 TRANSLATION_OUTPUT = ./frontend/controlcenter/src/translation/translations.json
+FRONTEND_NODE_MODULES = ./frontend/controlcenter/node_modules/.bin/vue-cli-service
 
-npminstall: $(TRANSLATION_OUTPUT)
+$(FRONTEND_NODE_MODULES): frontend/controlcenter/package.json frontend/controlcenter/package-lock.json
 	cd frontend/controlcenter && npm ci --no-audit --no-fund
+
+npminstall: $(FRONTEND_NODE_MODULES)
 
 serve_frontend_dev: npminstall
 	cd frontend/controlcenter && npm run serve
@@ -131,7 +134,7 @@ serve_frontend_dev: npminstall
 www:
 	mkdir -p ./www
 
-frontend_root: www $(TRANSLATION_OUTPUT)
+frontend_root: $(FRONTEND_NODE_MODULES) www $(TRANSLATION_OUTPUT)
 	sh ./frontend/controlcenter/root_build.sh
 
 release: release_bin

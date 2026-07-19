@@ -81,6 +81,9 @@ assert_contains ci/migrate_gitlab_releases.sh '--paginate'
 assert_contains ci/migrate_gitlab_releases.sh 'done < "$sorted_releases"'
 assert_contains tools/go_test.sh '#!/usr/bin/env bash'
 assert_contains Makefile 'BUILD_DEPENDENCIES = go gcc ragel npm bash'
+# This is a literal Make variable reference.
+# shellcheck disable=SC2016
+assert_contains Makefile 'frontend_root: $(FRONTEND_NODE_MODULES)'
 
 assert_contains ci/Dockerfile "https://github.com/lightmeter-ai/ControlCenter"
 # These are literal Dockerfile variables.
