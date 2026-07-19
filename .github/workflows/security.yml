@@ -111,6 +111,31 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --yes ragel
       - name: Generate coverage for SonarCloud
         run: ./tools/go_test.sh -coverprofile=coverinfo.txt
+      - name: Install pinned golangci-lint
+        run: |
+          lint_archive=golangci-lint-1.59.1-linux-amd64.tar.gz
+          curl --fail --location --silent --show-error \
+            "https://github.com/golangci/golangci-lint/releases/download/v1.59.1/${lint_archive}" \
+            --output "${RUNNER_TEMP}/${lint_archive}"
+          printf '%s  %s\n' \
+            'c30696f1292cff8778a495400745f0f9c0406a3f38d8bb12cef48d599f6c7791' \
+            "${RUNNER_TEMP}/${lint_archive}" | sha256sum --check
+          tar --extract --gzip \
+            --file "${RUNNER_TEMP}/${lint_archive}" \
+            --directory "${RUNNER_TEMP}"
+      - name: Generate SonarCloud lint report
+        run: |
+          lint_status=0
+          "${RUNNER_TEMP}/golangci-lint-1.59.1-linux-amd64/golangci-lint" run \
+            --out-format checkstyle \
+            > golangci-output-checkstyle.xml || lint_status=$?
+
+          if [ "$lint_status" -ne 0 ] && [ ! -s golangci-output-checkstyle.xml ]; then
+            exit "$lint_status"
+          fi
+
+          printf 'golangci-lint status=%s report_bytes=%s\n' \
+            "$lint_status" "$(wc -c < golangci-output-checkstyle.xml)"
       - name: Scan with SonarCloud
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6.0.0
