@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@getgauge/cli": "^1.1.6",
-    "taiko": "^1.1.0",
+    "taiko": "^1.5.0",
     "tmp": "^0.2.1"
   }
 }
